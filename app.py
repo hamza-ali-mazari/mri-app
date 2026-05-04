@@ -293,10 +293,29 @@ if mode == "📊 Dashboard":
 # =========== MODE 2: TEST DATASET ===========
 elif mode == "🔍 Test Dataset":
     st.subheader("🔍 Dataset Visualization & Testing")
-    
+
+    # Check if dataset directories exist
+    if not ORIGINAL_DIR.exists() or not GROUND_TRUTH_DIR.exists():
+        st.error("❌ **Dataset not found!**")
+        st.info("""
+        The PNG dataset directories are not available in this deployment.
+
+        **Options:**
+        1. **Upload Mode**: Use the "📤 Upload & Predict" mode to test with your own images
+        2. **Local Development**: Run the app locally with the full dataset
+        3. **Demo Mode**: The model is loaded and ready for inference
+
+        **Note**: Dataset images were excluded from deployment to keep the app lightweight.
+        """)
+        st.success("✅ Model loaded successfully - ready for custom image analysis!")
+        return
+
     col1, col2 = st.columns([3, 1])
     with col1:
         image_files = sorted([f for f in os.listdir(ORIGINAL_DIR) if f.endswith('.png')])
+        if not image_files:
+            st.warning("No PNG images found in dataset directory.")
+            return
         selected_image = st.selectbox("Select Image", image_files)
     with col2:
         st.metric("Total Images", len(image_files))
@@ -400,12 +419,30 @@ elif mode == "📤 Upload & Predict":
 # =========== MODE 4: BATCH ANALYSIS ===========
 elif mode == "📈 Batch Analysis":
     st.subheader("📈 Batch Processing")
-    
+
+    # Check if dataset directories exist
+    if not ORIGINAL_DIR.exists() or not GROUND_TRUTH_DIR.exists():
+        st.error("❌ **Dataset not found for batch analysis!**")
+        st.info("""
+        The PNG dataset directories are required for batch processing.
+
+        **Alternatives:**
+        1. **Upload Mode**: Process individual images with "📤 Upload & Predict"
+        2. **Local Development**: Run batch analysis locally with the full dataset
+
+        **Note**: Batch analysis requires the complete dataset to be available.
+        """)
+        return
+
     num_images = st.slider("Number of images to analyze", 1, 50, 10)
-    
+
     if st.button("🔄 Start Batch Analysis", use_container_width=True):
         image_files = sorted([f for f in os.listdir(ORIGINAL_DIR) if f.endswith('.png')])[:num_images]
-        
+
+        if not image_files:
+            st.warning("No PNG images found in dataset directory.")
+            return
+
         progress_bar = st.progress(0)
         results = []
 
