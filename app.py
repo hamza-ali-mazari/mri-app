@@ -1,7 +1,6 @@
 import streamlit as st
 import torch
 import numpy as np
-import cv2
 from PIL import Image
 import os
 from pathlib import Path
@@ -98,14 +97,12 @@ def load_model():
 def preprocess_image(image_path, img_size=64):
     """Preprocess image for inference"""
     try:
-        img = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            return None
-        
-        img = cv2.resize(img, (img_size, img_size))
-        img = img.astype(np.float32) / 255.0
-        img = torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float()
-        
+        # Use PIL instead of OpenCV
+        img = Image.open(str(image_path)).convert('L')  # Convert to grayscale
+        img = img.resize((img_size, img_size), Image.Resampling.LANCZOS)
+        img_array = np.array(img).astype(np.float32) / 255.0
+        img = torch.from_numpy(img_array).unsqueeze(0).unsqueeze(0).float()
+
         return img
     except:
         return None
@@ -307,37 +304,41 @@ elif mode == "🔍 Test Dataset":
     if selected_image:
         original_path = ORIGINAL_DIR / selected_image
         ground_truth_path = GROUND_TRUTH_DIR / selected_image
-        
-        original_img = cv2.imread(str(original_path))
-        ground_truth_img = cv2.imread(str(ground_truth_path), cv2.IMREAD_GRAYSCALE)
-        
-        if original_img is not None and ground_truth_img is not None:
-            original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
-            
+
+        # Use PIL instead of OpenCV
+        try:
+            original_img = Image.open(str(original_path)).convert('RGB')
+            ground_truth_img = Image.open(str(ground_truth_path)).convert('L')
+            original_img = np.array(original_img)
+            ground_truth_img = np.array(ground_truth_img)
+
             model = load_model()
             if model is not None:
                 image_tensor = preprocess_image(original_path)
                 prediction = predict_segmentation(model, image_tensor)
-                
+
                 if prediction is not None:
-                    # Resize to match
+                    # Resize to match using PIL/numpy
                     h, w = original_img.shape[:2]
-                    prediction_resized = cv2.resize(prediction, (w, h), interpolation=cv2.INTER_NEAREST)
-                    ground_truth_resized = cv2.resize(ground_truth_img, (w, h), interpolation=cv2.INTER_NEAREST)
-                    
+                    prediction_pil = Image.fromarray(prediction)
+                    prediction_resized = np.array(prediction_pil.resize((w, h), Image.Resampling.NEAREST))
+
+                    ground_truth_pil = Image.fromarray(ground_truth_img)
+                    ground_truth_resized = np.array(ground_truth_pil.resize((w, h), Image.Resampling.NEAREST))
+
                     metrics = calculate_metrics(prediction_resized, ground_truth_resized)
-                    
-                    # Display comparison
-                    overlay = original_img.copy().astype(float)
+
+                    # Display comparison - create overlay using numpy
+                    overlay = original_img.astype(float).copy()
                     mask_indices = prediction_resized > 127
                     overlay[mask_indices] = [0, 255, 0]
                     overlay = overlay.astype(np.uint8)
-                    blended = cv2.addWeighted(original_img, 0.7, overlay, 0.3, 0)
-                    
-                    fig = create_comparison_figure(original_img, ground_truth_resized, 
+                    blended = (original_img.astype(float) * 0.7 + overlay.astype(float) * 0.3).astype(np.uint8)
+
+                    fig = create_comparison_figure(original_img, ground_truth_resized,
                                                    prediction_resized, blended)
                     st.pyplot(fig)
-                    
+
                     # Metrics
                     st.divider()
                     st.subheader("📈 Performance Metrics")
@@ -368,14 +369,19 @@ elif mode == "📤 Upload & Predict":
                 with st.spinner("Processing..."):
                     image_tensor = preprocess_image(temp_path)
                     prediction = predict_segmentation(model, image_tensor)
-                    
+
                     if prediction is not None:
-                        pred_resized = cv2.resize(prediction, (image_array.shape[1], image_array.shape[0]))
-                        
+                        # Use PIL for resizing instead of cv2
+                        prediction_pil = Image.fromarray(prediction)
+                        pred_resized = np.array(prediction_pil.resize(
+                            (image_array.shape[1], image_array.shape[0]), 
+                            Image.Resampling.NEAREST
+                        ))
+
                         st.success("✅ Analysis Complete")
-                        st.image(pred_resized, caption="🎯 Segmentation Mask", 
+                        st.image(pred_resized, caption="🎯 Segmentation Mask",
                                 use_container_width=True, channels='GRAY')
-                        
+
                         # Download button
                         buf = BytesIO()
                         Image.fromarray(pred_resized).save(buf, format='PNG')
@@ -399,25 +405,31 @@ elif mode == "📈 Batch Analysis":
         
         progress_bar = st.progress(0)
         results = []
-        
+
         model = load_model()
-        
+
         for idx, img_file in enumerate(image_files):
             original_path = ORIGINAL_DIR / img_file
             ground_truth_path = GROUND_TRUTH_DIR / img_file
-            
-            original_img = cv2.imread(str(original_path))
-            ground_truth_img = cv2.imread(str(ground_truth_path), cv2.IMREAD_GRAYSCALE)
-            
-            if original_img is not None and ground_truth_img is not None:
+
+            # Use PIL instead of OpenCV
+            try:
+                original_img = Image.open(str(original_path)).convert('RGB')
+                ground_truth_img = Image.open(str(ground_truth_path)).convert('L')
+                original_img = np.array(original_img)
+                ground_truth_img = np.array(ground_truth_img)
+
                 image_tensor = preprocess_image(original_path)
                 prediction = predict_segmentation(model, image_tensor)
-                
+
                 if prediction is not None:
                     h, w = original_img.shape[:2]
-                    pred_resized = cv2.resize(prediction, (w, h))
-                    gt_resized = cv2.resize(ground_truth_img, (w, h))
-                    
+                    prediction_pil = Image.fromarray(prediction)
+                    pred_resized = np.array(prediction_pil.resize((w, h), Image.Resampling.NEAREST))
+
+                    ground_truth_pil = Image.fromarray(ground_truth_img)
+                    gt_resized = np.array(ground_truth_pil.resize((w, h), Image.Resampling.NEAREST))
+
                     metrics = calculate_metrics(pred_resized, gt_resized)
                     results.append({
                         'Image': img_file,
@@ -425,7 +437,10 @@ elif mode == "📈 Batch Analysis":
                         'IoU': metrics['IoU Score'],
                         'Accuracy': metrics['Pixel Accuracy']
                     })
-            
+
+            except Exception as e:
+                st.warning(f"Error processing {img_file}: {str(e)}")
+
             progress_bar.progress((idx + 1) / len(image_files))
         
         # Display results
