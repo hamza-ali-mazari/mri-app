@@ -308,14 +308,14 @@ elif mode == "🔍 Test Dataset":
         **Note**: Dataset images were excluded from deployment to keep the app lightweight.
         """)
         st.success("✅ Model loaded successfully - ready for custom image analysis!")
-        return
+        st.stop()
 
     col1, col2 = st.columns([3, 1])
     with col1:
         image_files = sorted([f for f in os.listdir(ORIGINAL_DIR) if f.endswith('.png')])
         if not image_files:
             st.warning("No PNG images found in dataset directory.")
-            return
+            st.stop()
         selected_image = st.selectbox("Select Image", image_files)
     with col2:
         st.metric("Total Images", len(image_files))
@@ -432,7 +432,7 @@ elif mode == "📈 Batch Analysis":
 
         **Note**: Batch analysis requires the complete dataset to be available.
         """)
-        return
+        st.stop()
 
     num_images = st.slider("Number of images to analyze", 1, 50, 10)
 
@@ -441,7 +441,7 @@ elif mode == "📈 Batch Analysis":
 
         if not image_files:
             st.warning("No PNG images found in dataset directory.")
-            return
+            st.stop()
 
         progress_bar = st.progress(0)
         results = []
