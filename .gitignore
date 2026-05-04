@@ -1,0 +1,28 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local testing files
+ssh_test.txt
+
+# Model weights and dataset artifacts
+*.pth
+*.pt
+*.pth.tar
+best_model_history.json
+PNG/
