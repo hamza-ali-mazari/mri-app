@@ -344,6 +344,9 @@ elif mode == "🔍 Test Dataset":
                     st.subheader("📈 Performance Metrics")
                     display_metrics_grid(metrics)
 
+        except Exception as e:
+            st.error(f"Error processing image: {str(e)}")
+
 # =========== MODE 3: UPLOAD & PREDICT ===========
 elif mode == "📤 Upload & Predict":
     st.subheader("📤 Upload Custom Image")
